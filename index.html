@@ -1,0 +1,183 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bouldering KPI Dashboard</title>
+    <style>
+      :root { --border:#e5e7eb; --bg:#f6f8fa; --text:#0b1220; --muted:#6b7280; --brand:#007aff; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--text);}
+      .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+      h1 { font-size: 22px; margin: 0 0 12px; }
+      .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+      .btn { border:1px solid var(--border); background:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; }
+      .btn.secondary { background:#f1f5f9; }
+      .card { background:#fff; border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+      .grid-2 { display:grid; grid-template-columns: 1fr; gap:16px; }
+      .grid-3 { display:grid; grid-template-columns: 1fr; gap:16px; }
+      @media (min-width: 860px) {
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+      }
+      label { font-size:12px; color:var(--muted); display:block; margin:4px 0; }
+      input[type="number"], input[type="text"] {
+        width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:10px;
+      }
+      .rows { display: grid; grid-template-columns: 5fr 2fr 2fr 3fr; gap:8px; align-items:center; margin-bottom:8px;}
+      .kpi { display:flex; flex-direction:column; gap:6px; }
+      .kpi .v { font-weight:600; font-size:20px; }
+      .muted { color:var(--muted); font-size:12px; }
+      .footer { font-size:12px; color:var(--muted); margin-top:16px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <h1>Kits vs Loose — Simple Dashboard</h1>
+        <button id="resetBtn" class="btn">↺ Reset to bouldering example</button>
+      </div>
+
+      <div class="grid-2" id="inputs"></div>
+
+      <div class="grid-3" id="kpis"></div>
+
+      <div class="grid-2" id="charts-1" style="margin-top:16px;"></div>
+      <div id="charts-2" style="margin-top:16px;"></div>
+
+      <div class="footer">
+        <p>How to use:</p>
+        <ul>
+          <li>Enter units & prices for Starter and Plus kits.</li>
+          <li>Add loose items with units & prices; tick “in kit baseline” for chalk bag/ball/brush/tape.</li>
+          <li>KPIs & charts update instantly.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- React + ReactDOM + Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Recharts UMD -->
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+
+    <script type="text/babel">
+      const { useMemo, useState } = React;
+      const {
+        ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+        PieChart, Pie, Cell
+      } = Recharts;
+
+      const fmtPct = (n) => (n == null || isNaN(n) ? "–" : `${(n * 100).toFixed(1)}%`);
+      const fmtEur = (n) => (n == null || isNaN(n) ? "–" : `€${Number(n).toFixed(2)}`);
+
+      function Dashboard() {
+        const [starterUnits, setStarterUnits] = useState(0);
+        const [plusUnits, setPlusUnits]     = useState(0);
+        const [starterPrice, setStarterPrice] = useState(29.99);
+        const [plusPrice, setPlusPrice]       = useState(84.99);
+
+        const [loose, setLoose] = useState([
+          { name: "Chalk bag (Vertika L)", units: 0, price: 11.0, inKit: true },
+          { name: "Chalk ball (high flow)", units: 0, price: 3.5, inKit: true },
+          { name: "Hold brush", units: 0, price: 7.0, inKit: true },
+          { name: "Finger tape", units: 0, price: 7.0, inKit: true },
+          { name: "Liquid chalk", units: 0, price: 7.5, inKit: false },
+        ]);
+
+        function addLooseRow() {
+          setLoose(rows => [...rows, { name: "New item", units: 0, price: 0, inKit: false }]);
+        }
+        function reset() {
+          setStarterUnits(0); setPlusUnits(0);
+          setStarterPrice(29.99); setPlusPrice(84.99);
+          setLoose([
+            { name: "Chalk bag (Vertika L)", units: 0, price: 11.0, inKit: true },
+            { name: "Chalk ball (high flow)", units: 0, price: 3.5, inKit: true },
+            { name: "Hold brush", units: 0, price: 7.0, inKit: true },
+            { name: "Finger tape", units: 0, price: 7.0, inKit: true },
+            { name: "Liquid chalk", units: 0, price: 7.5, inKit: false },
+          ]);
+        }
+        React.useEffect(() => {
+          document.getElementById("resetBtn").onclick = reset;
+        }, []);
+
+        function updateLoose(i, field, value) {
+          setLoose(rows => rows.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
+        }
+
+        const kitUnits   = useMemo(() => Number(starterUnits) + Number(plusUnits), [starterUnits, plusUnits]);
+        const looseUnits = useMemo(() => loose.reduce((s, r) => s + Number(r.units || 0), 0), [loose]);
+        const totalUnits = kitUnits + looseUnits;
+        const kitShare   = totalUnits ? kitUnits / totalUnits : null;
+
+        const kitRevenue   = Number(starterUnits) * Number(starterPrice) + Number(plusUnits) * Number(plusPrice);
+        const looseRevenue = loose.reduce((s, r) => s + Number(r.units || 0) * Number(r.price || 0), 0);
+        const totalRevenue = kitRevenue + looseRevenue;
+
+        const looseInKitUnits = useMemo(
+          () => loose.filter(r => r.inKit).reduce((s, r) => s + Number(r.units || 0), 0), [loose]
+        );
+        const looseOtherUnits = looseUnits - looseInKitUnits;
+
+        const unitsBars = useMemo(
+          () => [{ name:"Kits", units: kitUnits }, { name:"Loose", units: looseUnits }],
+          [kitUnits, looseUnits]
+        );
+        const looseStack = useMemo(
+          () => [{ name:"In-kit items", units: looseInKitUnits }, { name:"Other loose", units: looseOtherUnits }],
+          [looseInKitUnits, looseOtherUnits]
+        );
+        const pieData = useMemo(
+          () => [{ name:"Kits", value: kitUnits }, { name:"Loose", value: looseUnits }],
+          [kitUnits, looseUnits]
+        );
+
+        const COLORS = ["#0ea5e9", "#22c55e", "#f59e0b", "#ef4444"];
+
+        const kpis = [
+          { label: "All kits units", value: kitUnits },
+          { label: "Loose units", value: looseUnits },
+          { label: "Kits share of units", value: fmtPct(kitShare) },
+          { label: "Revenue (kits)", value: fmtEur(kitRevenue) },
+          { label: "Revenue (loose)", value: fmtEur(looseRevenue) },
+          { label: "Revenue (total)", value: fmtEur(totalRevenue) },
+        ];
+
+        return (
+          <>
+            {/* Inputs */}
+            <div className="grid-2">
+              <div className="card">
+                <div className="muted" style={{marginBottom:8}}>Kits (units & prices)</div>
+                <div className="grid-2" style={{gap:12}}>
+                  <div>
+                    <label>Starter kits — units</label>
+                    <input type="number" min="0" value={starterUnits}
+                      onChange={e=> setStarterUnits(Number(e.target.value))}/>
+                  </div>
+                  <div>
+                    <label>Starter price</label>
+                    <input type="number" step="0.01" value={starterPrice}
+                      onChange={e=> setStarterPrice(Number(e.target.value))}/>
+                  </div>
+                  <div>
+                    <label>Plus kits — units</label>
+                    <input type="number" min="0" value={plusUnits}
+                      onChange={e=> setPlusUnits(Number(e.target.value))}/>
+                  </div>
+                  <div>
+                    <label>Plus price</label>
+                    <input type="number" step="0.01" value={plusPrice}
+                      onChange={e=> setPlusPrice(Number(e.target.value))}/>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="muted" style={{marginBottom:8}}>Loose items (units & prices)</div>
+                {loose.map((row, i) => (
+                  <div key={i} className="rows">
+                    <input type="text" value={row.name} onC
