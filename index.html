@@ -180,4 +180,85 @@
                 <div className="muted" style={{marginBottom:8}}>Loose items (units & prices)</div>
                 {loose.map((row, i) => (
                   <div key={i} className="rows">
-                    <input type="text" value={row.name} onC
+                    <input type="text" value={row.name} onChange={e=> updateLoose(i,"name", e.target.value)} />
+                    <input type="number" min="0" value={row.units} onChange={e=> updateLoose(i,"units", Number(e.target.value))}/>
+                    <input type="number" step="0.01" value={row.price} onChange={e=> updateLoose(i,"price", Number(e.target.value))}/>
+                    <label className="muted" style={{display:"flex", alignItems:"center", gap:8}}>
+                      <input type="checkbox" checked={row.inKit} onChange={e=> updateLoose(i,"inKit", e.target.checked)}/>
+                      Mark as part of kit baseline
+                    </label>
+                  </div>
+                ))}
+                <button className="btn secondary" onClick={addLooseRow}>＋ Add item</button>
+              </div>
+            </div>
+
+            {/* KPIs */}
+            <div className="grid-3" style={{marginTop:16}}>
+              {kpis.map(k => (
+                <div key={k.label} className="card kpi">
+                  <div className="muted">{k.label}</div>
+                  <div className="v">{k.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Charts */}
+            <div className="grid-2" style={{marginTop:16}}>
+              <div className="card">
+                <div className="muted" style={{marginBottom:8}}>Units — Kits vs Loose</div>
+                <div style={{width:"100%", height:260}}>
+                  <ResponsiveContainer>
+                    <BarChart data={unitsBars}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="units" name="Units" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="muted" style={{marginBottom:8}}>Mix — Kits vs Loose</div>
+                <div style={{width:"100%", height:260}}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={100} label>
+                        {pieData.map((e,i)=>(<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+                      </Pie>
+                      <Tooltip /><Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{marginTop:16}}>
+              <div className="muted" style={{marginBottom:8}}>Loose breakdown — kit items vs other</div>
+              <div style={{width:"100%", height:280}}>
+                <ResponsiveContainer>
+                  <BarChart data={looseStack}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="units" name="Units" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("inputs").parentElement);
+      // We need separate mount points already present in the DOM, so render into the document body via portals:
+      function App() { return <Dashboard />; }
+      ReactDOM.createRoot(document.querySelector(".container")).render(<App />);
+    </script>
+  </body>
+</html>
